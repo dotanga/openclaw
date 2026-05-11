@@ -1,0 +1,25 @@
+{
+  "name": "@openclaw/cse-claw",
+  "version": "2026.5.10-beta.1",
+  "private": true,
+  "description": "Passive OpenClaw bridge to a local CSE cognition backend",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "@openclaw/plugin-sdk": "workspace:*",
+    "openclaw": "workspace:*"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.10-beta.1"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
