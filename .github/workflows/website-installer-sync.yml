@@ -131,8 +131,9 @@ jobs:
   sync-website:
     needs: [static, linux-docker, macos-installer, windows-installer]
     if: >
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.sync_website)
+      github.repository == 'openclaw/openclaw' &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.sync_website))
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout OpenClaw
