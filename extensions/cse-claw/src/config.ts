@@ -40,7 +40,7 @@ export function resolveCseClawConfig(input: unknown): CseClawConfig {
   const config = asRecord(input);
   return {
     enabled: asBoolean(config.enabled, false),
-    endpoint: asString(config.endpoint, DEFAULT_ENDPOINT).replace(/\/+$/, ""),
+    endpoint: asString(config.endpoint, DEFAULT_ENDPOINT).replace(/[/]+$/u, ""),
     timeoutMs: asPositiveInteger(config.timeoutMs, DEFAULT_TIMEOUT_MS, 100, 10_000),
     maxPromptChars: asPositiveInteger(config.maxPromptChars, DEFAULT_MAX_PROMPT_CHARS, 100, 12_000),
     maxAssistantChars: asPositiveInteger(

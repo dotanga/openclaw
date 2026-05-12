@@ -81,7 +81,9 @@ describe("CSE_Claw client", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
     });
-    expect(JSON.parse(String(request.init?.body))).toMatchObject({
+    const requestBody = request.init?.body;
+    expect(typeof requestBody).toBe("string");
+    expect(JSON.parse(requestBody as string)).toMatchObject({
       turn_id: "run-1",
       source_id: "openclaw",
       user_text: "hello",
