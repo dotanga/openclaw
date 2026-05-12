@@ -1,0 +1,82 @@
+{
+  "id": "cse-claw",
+  "name": "CSE Claw",
+  "description": "Disabled-by-default passive bridge from OpenClaw turns to a local CSE cognition backend.",
+  "enabledByDefault": false,
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": false
+      },
+      "endpoint": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+        "default": "http://127.0.0.1:8000"
+      },
+      "timeoutMs": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 30000,
+        "default": 1500
+      },
+      "maxUserTextChars": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 20000,
+        "default": 4000
+      },
+      "maxAssistantTextChars": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 20000,
+        "default": 4000
+      },
+      "includeMetadata": {
+        "type": "boolean",
+        "default": true
+      },
+      "includeToolCalls": {
+        "type": "boolean",
+        "default": false
+      }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable CSE Claw",
+      "help": "Opt in to sending redacted turn summaries to the configured local CSE backend. The bridge is advisory only."
+    },
+    "endpoint": {
+      "label": "CSE Backend Endpoint",
+      "help": "HTTP(S) base URL for the local CSE service. Defaults to loopback."
+    },
+    "timeoutMs": {
+      "label": "CSE Backend Timeout",
+      "help": "Milliseconds to wait before failing open without advisory context."
+    },
+    "maxUserTextChars": {
+      "label": "Max User Text Characters",
+      "advanced": true
+    },
+    "maxAssistantTextChars": {
+      "label": "Max Assistant Text Characters",
+      "advanced": true
+    },
+    "includeMetadata": {
+      "label": "Include Safe Metadata",
+      "advanced": true
+    },
+    "includeToolCalls": {
+      "label": "Include Tool Call Summaries",
+      "help": "Default off. Sends only redacted tool-call summaries when enabled.",
+      "advanced": true
+    }
+  }
+}
