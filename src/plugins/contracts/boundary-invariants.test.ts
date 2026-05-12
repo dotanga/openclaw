@@ -12,6 +12,7 @@ const BUNDLED_TYPED_HOOK_REGISTRATION_FILES = [
   "extensions/acpx/index.ts",
   "extensions/active-memory/index.ts",
   "extensions/codex/index.ts",
+  "extensions/cse-claw/index.ts",
   "extensions/diffs/src/plugin.ts",
   "extensions/discord/subagent-hooks-api.ts",
   "extensions/feishu/subagent-hooks-api.ts",
@@ -25,6 +26,7 @@ const BUNDLED_TYPED_HOOK_REGISTRATION_GUARDS = {
   "extensions/acpx/index.ts": ["reply_dispatch"],
   "extensions/active-memory/index.ts": ["before_prompt_build"],
   "extensions/codex/index.ts": ["inbound_claim"],
+  "extensions/cse-claw/index.ts": ["agent_end", "before_prompt_build", "llm_output"],
   "extensions/diffs/src/plugin.ts": ["before_prompt_build"],
   "extensions/discord/subagent-hooks-api.ts": [
     "subagent_delivery_target",
