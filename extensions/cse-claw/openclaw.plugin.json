@@ -26,25 +26,25 @@
         "maximum": 30000,
         "default": 1500
       },
-      "maxUserTextChars": {
+      "maxPromptChars": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 12000,
+        "default": 2000
+      },
+      "maxAssistantChars": {
         "type": "number",
         "minimum": 100,
         "maximum": 20000,
         "default": 4000
       },
-      "maxAssistantTextChars": {
-        "type": "number",
-        "minimum": 100,
-        "maximum": 20000,
-        "default": 4000
-      },
-      "includeMetadata": {
+      "injectAdvisoryContext": {
         "type": "boolean",
         "default": true
       },
-      "includeToolCalls": {
+      "logFailures": {
         "type": "boolean",
-        "default": false
+        "default": true
       }
     }
   },
@@ -61,21 +61,24 @@
       "label": "CSE Backend Timeout",
       "help": "Milliseconds to wait before failing open without advisory context."
     },
-    "maxUserTextChars": {
-      "label": "Max User Text Characters",
+    "maxPromptChars": {
+      "label": "Max Prompt Characters",
+      "help": "Maximum redacted user prompt characters sent to CSE before truncation.",
       "advanced": true
     },
-    "maxAssistantTextChars": {
-      "label": "Max Assistant Text Characters",
+    "maxAssistantChars": {
+      "label": "Max Assistant Characters",
+      "help": "Maximum redacted assistant/output characters sent to CSE before truncation.",
       "advanced": true
     },
-    "includeMetadata": {
-      "label": "Include Safe Metadata",
+    "injectAdvisoryContext": {
+      "label": "Inject Advisory Context",
+      "help": "When disabled, CSE pre-turn calls still run for observation but advisory context is not injected into the model prompt.",
       "advanced": true
     },
-    "includeToolCalls": {
-      "label": "Include Tool Call Summaries",
-      "help": "Default off. Sends only redacted tool-call summaries when enabled.",
+    "logFailures": {
+      "label": "Log CSE Bridge Failures",
+      "help": "Logs skipped CSE calls at warn level while preserving fail-open runtime behavior.",
       "advanced": true
     }
   }
