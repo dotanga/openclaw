@@ -3,7 +3,7 @@ const SECRET_PATTERNS: Array<[RegExp, string]> = [
     /\b(api[_-]?key|token|secret|password|passwd|authorization)\s*[:=]\s*[^\s,;]+/gi,
     "$1=[REDACTED]",
   ],
-  [/\bBearer\s+[A-Za-z0-9._~+\/-]+=*/g, "Bearer [REDACTED]"],
+  [/\bBearer\s+[A-Za-z0-9._~+/-]+=*/g, "Bearer [REDACTED]"],
   [/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, "[REDACTED_GITHUB_TOKEN]"],
   [/\bsk-[A-Za-z0-9_-]{20,}\b/g, "[REDACTED_API_KEY]"],
 ];
