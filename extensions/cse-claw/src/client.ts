@@ -1,3 +1,7 @@
+import {
+  fetchWithSsrFGuard,
+  ssrfPolicyFromHttpBaseUrlAllowedHostname,
+} from "openclaw/plugin-sdk/ssrf-runtime";
 import type { CseClawConfig } from "./config.js";
 import type { CseClawPreTurnResponse } from "./prompt.js";
 
@@ -35,19 +39,28 @@ async function postJson<TResponse>(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
   try {
-    const response = await fetch(`${config.endpoint}${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
+    const { response, release } = await fetchWithSsrFGuard({
+      url: `${config.endpoint}${path}`,
+      init: {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      },
+      policy: ssrfPolicyFromHttpBaseUrlAllowedHostname(config.endpoint),
+      auditContext: "cse-claw",
     });
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(
-        `CSE backend ${response.status} ${response.statusText}: ${text.slice(0, 240)}`,
-      );
+    try {
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(
+          `CSE backend ${response.status} ${response.statusText}: ${text.slice(0, 240)}`,
+        );
+      }
+      return (await response.json()) as TResponse;
+    } finally {
+      await release();
     }
-    return (await response.json()) as TResponse;
   } finally {
     clearTimeout(timeout);
   }
