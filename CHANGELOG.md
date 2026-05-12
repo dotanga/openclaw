@@ -6,6 +6,9 @@ Docs: https://docs.openclaw.ai
 
 ### Fixes
 
+- fix(node-pairing): replace changed pending requests [AI]. (#80894) Thanks @pgondhi987.
+- Rate limit Google Chat webhook requests [AI]. (#80974) Thanks @pgondhi987.
+- Docker: mount the auth-profile secret key directory so OAuth-backed auth profiles survive container rebuilds. (#80991)
 - fix(feishu): normalize webhook rate-limit client keys [AI]. (#80975) Thanks @pgondhi987.
 - fix(auth): prevent bootstrap pairing scope changes [AI]. (#80976) Thanks @pgondhi987.
 - Validate Control UI loopback retry endpoints [AI]. (#80900) Thanks @pgondhi987.
@@ -98,6 +101,7 @@ Docs: https://docs.openclaw.ai
 - Agents/compaction: read post-compaction AGENTS.md refresh context from the queued run workspace instead of the runner process cwd, so CLI-backed follow-up turns re-inject the correct workspace startup rules after compaction. Fixes #70541. (#75532) Thanks @vyctorbrzezowski.
 - Agents/read tool: treat positive offsets beyond EOF as empty ranges instead of surfacing the upstream read error, so stale pagination cursors no longer crash tool calls while unrelated read failures still fail loud. Fixes #62466. (#75536) Thanks @vyctorbrzezowski.
 - Google/Gemini: normalize retired Gemini 3 Pro Preview refs left in Google API-key onboarding model allowlists and fallbacks, so setup-emitted config keeps testing `google/gemini-3.1-pro-preview` instead of `google/gemini-3-pro-preview`.
+- Telegram/context: bound selected topic context to the active session so messages from before `/new` or `/reset` are not replayed into later turns. (#80848) Thanks @VACInc.
 - Google/Gemini: normalize retired nested Gemini 3 Pro Preview ids when resolving exact configured proxy-provider refs, so `kilocode/google/gemini-3-pro-preview` resolves to `kilocode/google/gemini-3.1-pro-preview` for Gemini 3.1 testing.
 - CLI: strip generic OSC terminal escape payloads from sanitized output fields, preventing clipboard/title escape bodies from leaking into commitment tables and other terminal-safe text. Thanks @shakkernerd.
 - Codex app-server: match connector-backed plugin approval elicitations by stable connector id so enabled destructive actions no longer fall through to display-name-only rejection.
