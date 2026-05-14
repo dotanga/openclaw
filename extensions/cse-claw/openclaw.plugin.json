@@ -18,12 +18,12 @@
         "type": "string",
         "format": "uri",
         "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
-        "default": "http://127.0.0.1:8000"
+        "default": "http://127.0.0.1:8080"
       },
       "timeoutMs": {
         "type": "number",
         "minimum": 100,
-        "maximum": 30000,
+        "maximum": 10000,
         "default": 1500
       },
       "maxPromptChars": {

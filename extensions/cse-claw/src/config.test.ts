@@ -20,7 +20,7 @@ describe("CSE_Claw config", () => {
   it("is disabled by default and points at the local backend", () => {
     expect(resolveCseClawConfig(undefined)).toStrictEqual({
       enabled: false,
-      endpoint: "http://127.0.0.1:8000",
+      endpoint: "http://127.0.0.1:8080",
       timeoutMs: 1_500,
       maxPromptChars: 2_000,
       maxAssistantChars: 4_000,
@@ -60,7 +60,7 @@ describe("CSE_Claw config", () => {
     });
 
     expect(resolved.enabled).toBe(false);
-    expect(resolved.endpoint).toBe("http://127.0.0.1:8000");
+    expect(resolved.endpoint).toBe("http://127.0.0.1:8080");
     expect(resolved.timeoutMs).toBe(1_500);
     expect(resolved.maxPromptChars).toBe(2_000);
   });

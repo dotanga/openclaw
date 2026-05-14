@@ -8,7 +8,7 @@ export type CseClawConfig = {
   logFailures: boolean;
 };
 
-const DEFAULT_ENDPOINT = "http://127.0.0.1:8000";
+const DEFAULT_ENDPOINT = "http://127.0.0.1:8080";
 const DEFAULT_TIMEOUT_MS = 1_500;
 const DEFAULT_MAX_PROMPT_CHARS = 2_000;
 const DEFAULT_MAX_ASSISTANT_CHARS = 4_000;
