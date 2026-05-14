@@ -12,7 +12,9 @@ export function truncateText(text: string, maxChars: number): string {
   if (text.length <= maxChars) {
     return text;
   }
-  return `${text.slice(0, Math.max(0, maxChars - 32))}\n…[truncated ${text.length - maxChars} chars]`;
+  const prefix = text.slice(0, Math.max(0, maxChars - 32));
+  const marker = `…[truncated ${text.length - maxChars} chars]`;
+  return prefix ? `${prefix}\n${marker}` : marker;
 }
 
 export function redactForCse(text: string, maxChars: number): string {
