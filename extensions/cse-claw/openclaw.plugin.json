@@ -1,0 +1,85 @@
+{
+  "id": "cse-claw",
+  "name": "CSE Claw",
+  "description": "Disabled-by-default passive bridge from OpenClaw turns to a local CSE cognition backend.",
+  "enabledByDefault": false,
+  "activation": {
+    "onStartup": true
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "type": "boolean",
+        "default": false
+      },
+      "endpoint": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://",
+        "default": "http://127.0.0.1:8080"
+      },
+      "timeoutMs": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 10000,
+        "default": 1500
+      },
+      "maxPromptChars": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 12000,
+        "default": 2000
+      },
+      "maxAssistantChars": {
+        "type": "number",
+        "minimum": 100,
+        "maximum": 20000,
+        "default": 4000
+      },
+      "injectAdvisoryContext": {
+        "type": "boolean",
+        "default": true
+      },
+      "logFailures": {
+        "type": "boolean",
+        "default": true
+      }
+    }
+  },
+  "uiHints": {
+    "enabled": {
+      "label": "Enable CSE Claw",
+      "help": "Opt in to sending redacted turn summaries to the configured local CSE backend. The bridge is advisory only."
+    },
+    "endpoint": {
+      "label": "CSE Backend Endpoint",
+      "help": "HTTP(S) base URL for the local CSE service. Defaults to loopback."
+    },
+    "timeoutMs": {
+      "label": "CSE Backend Timeout",
+      "help": "Milliseconds to wait before failing open without advisory context."
+    },
+    "maxPromptChars": {
+      "label": "Max Prompt Characters",
+      "help": "Maximum redacted user prompt characters sent to CSE before truncation.",
+      "advanced": true
+    },
+    "maxAssistantChars": {
+      "label": "Max Assistant Characters",
+      "help": "Maximum redacted assistant/output characters sent to CSE before truncation.",
+      "advanced": true
+    },
+    "injectAdvisoryContext": {
+      "label": "Inject Advisory Context",
+      "help": "When disabled, CSE pre-turn calls still run for observation but advisory context is not injected into the model prompt.",
+      "advanced": true
+    },
+    "logFailures": {
+      "label": "Log CSE Bridge Failures",
+      "help": "Logs skipped CSE calls at warn level while preserving fail-open runtime behavior.",
+      "advanced": true
+    }
+  }
+}
