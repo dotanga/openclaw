@@ -5,7 +5,41 @@ import {
 import type { CseClawConfig } from "./config.js";
 import type { CseClawPreTurnResponse } from "./prompt.js";
 
+export const CSE_CLAW_BRIDGE_SCHEMA_VERSION = "cse-claw.bridge.v1" as const;
+
+export const CSE_CLAW_BRIDGE_CAPABILITIES = [
+  "structured_events",
+  "replay_references",
+  "structured_influence_packets",
+  "bounded_advisory_context",
+] as const;
+
+export type CseClawBridgeCapability = (typeof CSE_CLAW_BRIDGE_CAPABILITIES)[number];
+
+export type CseClawTurnPreEvent = {
+  kind: "TurnPreEvent";
+  turn_id?: string;
+  channel?: string;
+  chat_type?: string;
+  source_id: "openclaw";
+  user_text: string;
+  trusted_metadata: Record<string, unknown>;
+  context_refs: string[];
+};
+
+export type CseClawTurnPostEvent = {
+  kind: "TurnPostEvent";
+  trace_id: string;
+  assistant_text: string;
+  tool_calls: Array<Record<string, unknown>>;
+  outcome: string;
+  metadata: Record<string, unknown>;
+};
+
 export type CseClawPreTurnRequest = {
+  schema_version: typeof CSE_CLAW_BRIDGE_SCHEMA_VERSION;
+  capabilities: CseClawBridgeCapability[];
+  event: CseClawTurnPreEvent;
   turn_id?: string;
   channel?: string;
   chat_type?: string;
@@ -16,6 +50,9 @@ export type CseClawPreTurnRequest = {
 };
 
 export type CseClawPostTurnRequest = {
+  schema_version: typeof CSE_CLAW_BRIDGE_SCHEMA_VERSION;
+  capabilities: CseClawBridgeCapability[];
+  event: CseClawTurnPostEvent;
   trace_id: string;
   assistant_text: string;
   tool_calls: Array<Record<string, unknown>>;
@@ -24,11 +61,14 @@ export type CseClawPostTurnRequest = {
 };
 
 export type CseClawPostTurnResponse = {
+  schema_version?: string;
+  accepted_capabilities?: string[];
   trace_id: string;
   event_id: string;
   artifact_id: string;
   outcome: string;
   writes_canonical_openclaw_state: boolean;
+  replay_reference?: Record<string, unknown>;
 };
 
 async function postJson<TResponse>(
