@@ -12,7 +12,11 @@ vi.mock("openclaw/plugin-sdk/ssrf-runtime", async (importOriginal) => {
   };
 });
 
-import { CseClawClient } from "./client.js";
+import {
+  CSE_CLAW_BRIDGE_CAPABILITIES,
+  CSE_CLAW_BRIDGE_SCHEMA_VERSION,
+  CseClawClient,
+} from "./client.js";
 import { resolveCseClawConfig } from "./config.js";
 
 type GuardRequest = {
@@ -46,6 +50,7 @@ describe("CSE_Claw client", () => {
     const { release } = queueGuardedResponse(
       new Response(
         JSON.stringify({
+          schema_version: "cse-claw.bridge.v1",
           trace_id: "trace-1",
           event_id: "event-1",
           experience_id: "exp-1",
@@ -63,6 +68,17 @@ describe("CSE_Claw client", () => {
 
     await expect(
       client.preTurn({
+        schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
+        capabilities: [...CSE_CLAW_BRIDGE_CAPABILITIES],
+        event: {
+          kind: "TurnPreEvent",
+          turn_id: "run-1",
+          channel: "telegram",
+          source_id: "openclaw",
+          user_text: "hello",
+          trusted_metadata: { runId: "run-1" },
+          context_refs: [],
+        },
         turn_id: "run-1",
         channel: "telegram",
         source_id: "openclaw",
@@ -84,6 +100,14 @@ describe("CSE_Claw client", () => {
     const requestBody = request.init?.body;
     expect(typeof requestBody).toBe("string");
     expect(JSON.parse(requestBody as string)).toMatchObject({
+      schema_version: "cse-claw.bridge.v1",
+      capabilities: expect.arrayContaining(["structured_events", "replay_references"]),
+      event: {
+        kind: "TurnPreEvent",
+        turn_id: "run-1",
+        source_id: "openclaw",
+        user_text: "hello",
+      },
       turn_id: "run-1",
       source_id: "openclaw",
       user_text: "hello",
@@ -98,6 +122,16 @@ describe("CSE_Claw client", () => {
 
     await expect(
       client.postTurn({
+        schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
+        capabilities: [...CSE_CLAW_BRIDGE_CAPABILITIES],
+        event: {
+          kind: "TurnPostEvent",
+          trace_id: "trace-1",
+          assistant_text: "nope",
+          tool_calls: [],
+          outcome: "agent_end_error",
+          metadata: {},
+        },
         trace_id: "trace-1",
         assistant_text: "nope",
         tool_calls: [],

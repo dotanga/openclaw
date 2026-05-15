@@ -6,6 +6,13 @@ const { postTurnMock, preTurnMock } = vi.hoisted(() => ({
 }));
 
 vi.mock("./src/client.js", () => ({
+  CSE_CLAW_BRIDGE_SCHEMA_VERSION: "cse-claw.bridge.v1",
+  CSE_CLAW_BRIDGE_CAPABILITIES: [
+    "structured_events",
+    "replay_references",
+    "structured_influence_packets",
+    "bounded_advisory_context",
+  ],
   CseClawClient: vi.fn(function CseClawClientMock() {
     return {
       preTurn: preTurnMock,
@@ -64,6 +71,14 @@ describe("CSE_Claw plugin hooks", () => {
 
     expect(preTurnMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        schema_version: "cse-claw.bridge.v1",
+        capabilities: expect.arrayContaining(["structured_events", "replay_references"]),
+        event: expect.objectContaining({
+          kind: "TurnPreEvent",
+          turn_id: "run-1",
+          source_id: "openclaw",
+          user_text: "hello token=[REDACTED]",
+        }),
         turn_id: "run-1",
         channel: "telegram",
         source_id: "openclaw",
@@ -108,6 +123,13 @@ describe("CSE_Claw plugin hooks", () => {
 
     expect(postTurnMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        schema_version: "cse-claw.bridge.v1",
+        capabilities: expect.arrayContaining(["structured_events", "replay_references"]),
+        event: expect.objectContaining({
+          kind: "TurnPostEvent",
+          trace_id: "trace-1",
+          assistant_text: "assistant token=[REDACTED]",
+        }),
         trace_id: "trace-1",
         assistant_text: "assistant token=[REDACTED]",
         tool_calls: [],

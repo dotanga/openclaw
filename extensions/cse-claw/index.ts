@@ -1,7 +1,11 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { resolveLivePluginConfigObject } from "openclaw/plugin-sdk/plugin-config-runtime";
 import { definePluginEntry, type OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
-import { CseClawClient } from "./src/client.js";
+import {
+  CSE_CLAW_BRIDGE_CAPABILITIES,
+  CSE_CLAW_BRIDGE_SCHEMA_VERSION,
+  CseClawClient,
+} from "./src/client.js";
 import { resolveCseClawConfig, type CseClawConfig } from "./src/config.js";
 import { buildAdvisoryPrompt } from "./src/prompt.js";
 import { redactForCse, sanitizeMetadata } from "./src/redaction.js";
@@ -48,6 +52,16 @@ async function postObservation(params: {
 }): Promise<void> {
   try {
     await new CseClawClient(params.config).postTurn({
+      schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
+      capabilities: [...CSE_CLAW_BRIDGE_CAPABILITIES],
+      event: {
+        kind: "TurnPostEvent",
+        trace_id: params.traceId,
+        assistant_text: redactForCse(params.assistantText, params.config.maxAssistantChars),
+        tool_calls: [],
+        outcome: params.outcome,
+        metadata: params.metadata,
+      },
       trace_id: params.traceId,
       assistant_text: redactForCse(params.assistantText, params.config.maxAssistantChars),
       tool_calls: [],
@@ -73,6 +87,29 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
       }
       try {
         const result = await new CseClawClient(config).preTurn({
+          schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
+          capabilities: [...CSE_CLAW_BRIDGE_CAPABILITIES],
+          event: {
+            kind: "TurnPreEvent",
+            turn_id: ctx.runId,
+            channel: ctx.messageProvider ?? ctx.channelId,
+            chat_type: undefined,
+            source_id: "openclaw",
+            user_text: redactForCse(prompt, config.maxPromptChars),
+            trusted_metadata: sanitizeMetadata({
+              runId: ctx.runId,
+              agentId: ctx.agentId,
+              sessionKey: ctx.sessionKey,
+              sessionId: ctx.sessionId,
+              workspaceDir: ctx.workspaceDir,
+              modelProviderId: ctx.modelProviderId,
+              modelId: ctx.modelId,
+              messageProvider: ctx.messageProvider,
+              trigger: ctx.trigger,
+              channelId: ctx.channelId,
+            }),
+            context_refs: [],
+          },
           turn_id: ctx.runId,
           channel: ctx.messageProvider ?? ctx.channelId,
           chat_type: undefined,
