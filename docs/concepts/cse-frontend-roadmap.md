@@ -60,6 +60,49 @@ Human / channel / tool event
 | CSE_Claw | transport, schemas, redaction, trace correlation, advisory prompt formatting                   | hidden side effects, policy bypasses, private data exposure                |
 | OpenClaw | channels, tools, approvals, sessions, memory files, user-facing behavior, operator controls    | opaque cognition state that cannot be audited                              |
 
+## Subjective state ownership boundary
+
+Issue #13 records a core architectural guardrail: OpenClaw and CSE must not drift into multiple competing subjective continuity systems.
+
+The risk is not ordinary duplication of data. The deeper risk is gradual emergence of overlapping continuity layers across runtime state, plugin state, semantic caches, proposal artifacts, hidden summarization, multimodal preprocessing, subagent state, recovery buffers, and implicit model-side continuity. If those layers start influencing behavior as independent memory systems, the architecture can quietly produce multiple competing sources of self.
+
+The guiding distinction is:
+
+> Operational state and subjective state are not the same thing.
+
+OpenClaw needs operational state to route messages, manage sessions, execute tools, recover from failures, schedule work, and present operator surfaces. CSE needs subjective state to preserve experiences, CoG evolution, reflection, semantic learning, and replay-authoritative cognition. Those categories may reference each other, but they should not silently replace each other.
+
+### State ownership sketch
+
+| State class                           | Primary owner                       | Notes                                                                                                                              |
+| ------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Subjective continuity                 | CSE                                 | Experiences, memory pressure, CoG posture, reflection context, semantic learning, and long-lived identity continuity.              |
+| Replay-authoritative cognition traces | CSE, or an explicit shared contract | OpenClaw may link to traces, but the source of cognitive replay must be named and inspectable.                                     |
+| Runtime/session transport state       | OpenClaw                            | Channel routing, session keys, delivery state, process state, and tool execution state.                                            |
+| Plugin-local ephemeral state          | OpenClaw plugin runtime             | Acceptable for retries, trace correlation, and short-lived transport concerns; dangerous if it becomes semantic memory.            |
+| Proposal review/apply state           | Explicit shared/audited layer       | Proposals may originate in CSE and be reviewed/applied through OpenClaw, with evidence and operator-visible state transitions.     |
+| Multimodal preprocessing state        | OpenClaw until promoted             | Raw/transient media processing artifacts should not become CSE continuity unless explicitly converted into CSE events/experiences. |
+| Subagent/task state                   | OpenClaw unless promoted            | Subagent logs and task state are operational unless intentionally summarized into CSE as traceable experiences.                    |
+
+### Dangerous hidden-state patterns
+
+Avoid patterns where convenience infrastructure becomes a parallel cognition system:
+
+- plugin-local semantic caches that influence behavior without CSE traces;
+- hidden conversation summaries that become durable personality or memory;
+- proposal artifacts that start acting like accepted memory;
+- multimodal preprocessing buffers that become unreviewed subjective context;
+- subagent-local conclusions that influence the main assistant without explicit evidence links;
+- runtime recovery state that changes CoG-like behavior without entering CSE replay.
+
+When a new persistence feature is added, reviewers should ask:
+
+1. Is this operational state or subjective state?
+2. Who owns it?
+3. Can it influence behavior?
+4. If it can influence behavior, is that influence traceable in CSE or explicitly excluded from CSE continuity?
+5. Can replay reconstruct the same influence path?
+
 ## Core principles
 
 ### 1. Advisory cognition, not hidden control
