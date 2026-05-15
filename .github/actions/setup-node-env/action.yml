@@ -57,6 +57,25 @@ runs:
         pnpm -v
         if command -v bun &>/dev/null; then bun -v; fi
 
+    - name: Ensure ripgrep
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v rg >/dev/null 2>&1; then
+          rg --version | head -n 1
+          exit 0
+        fi
+
+        if [ "${RUNNER_OS:-}" = "Linux" ]; then
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+          rg --version | head -n 1
+          exit 0
+        fi
+
+        echo "::error::ripgrep (rg) is required but was not found on PATH"
+        exit 1
+
     - name: Capture node path
       if: inputs.install-deps == 'true'
       shell: bash
