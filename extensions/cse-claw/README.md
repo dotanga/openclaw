@@ -4,6 +4,8 @@ Disabled-by-default passive bridge from OpenClaw turns to a local CSE backend.
 
 CSE Claw treats CSE as an auditable cognition/continuity layer and OpenClaw as the body/tools/channels runtime. It is deliberately advisory-only: CSE responses do **not** grant tool permissions, mutate OpenClaw prompts or safeguards, send external messages, or write OpenClaw memory automatically.
 
+For the broader architecture and staged plan, see [`docs/concepts/cse-frontend-roadmap.md`](../../docs/concepts/cse-frontend-roadmap.md).
+
 ## Prerequisites
 
 - CSE API running locally, normally from `projects/cse-live`, on `http://127.0.0.1:8080`.
