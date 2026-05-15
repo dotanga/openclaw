@@ -183,6 +183,54 @@ Acceptance criteria:
 - Tests prove advisory text does not claim tool authority.
 - Tests prove config defaults are safe.
 
+### Phase 1 contract guardrails
+
+Before implementing Phase 1, preserve these design constraints:
+
+#### Do not make the bridge prompt-shaped
+
+The bridge contract must not degrade into "send a giant context blob, receive a giant context blob." That shape would make cognition opaque, replay fuzzy, and causality hard to inspect. It would also turn CSE into a prompt augmenter instead of a replayable cognition layer.
+
+Phase 1 should bias toward explicit semantic objects, for example:
+
+- `TurnPreEvent`
+- `TurnPostEvent`
+- `CoGSnapshot`
+- `BehaviorPosture`
+- `MemoryProposal`
+- `ReflectionTrigger`
+- `GoalMutationProposal`
+- `ReplayReference`
+
+Text fields are allowed, but they should be bounded, typed, and attached to traceable event semantics. Hidden reasoning text and unstructured prompt blobs should not become the primary contract.
+
+#### Preserve asymmetry
+
+The intended asymmetry is healthy:
+
+- OpenClaw can survive without CSE.
+- CSE cannot embody without a host/runtime.
+
+Do not accidentally invert this relationship. OpenClaw remains the operational authority for tools, permissions, routing, approvals, and delivery. CSE remains the cognitive authority for subjective continuity, CoG, reflection, proposals, and replay-authoritative cognition. The bridge remains advisory and inspectable.
+
+#### Version early
+
+The bridge should have explicit schema versioning from the beginning of Phase 1, even if the first version feels small. Traces, proposals, multimodal adapters, replay, subagents, and CoG snapshots will evolve independently; schema drift should be planned for, not discovered later.
+
+Use:
+
+- explicit schema version fields;
+- feature or capability negotiation;
+- optional capability flags;
+- strict additive evolution rules for compatible changes;
+- clear breaking-change rules for future versions.
+
+#### Treat replay as a first-class customer
+
+Every bridge field should answer: "Could a future replay engine reconstruct this influence path?"
+
+If the answer is no, the field is probably incomplete, too implicit, or in the wrong layer.
+
 ### Phase 1 — Stable bridge contract
 
 Goals:
