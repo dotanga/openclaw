@@ -44,6 +44,7 @@ env:
 
 jobs:
   preview_plugins_npm:
+    if: github.repository == 'openclaw/openclaw'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -153,7 +154,7 @@ jobs:
 
   preview_plugin_pack:
     needs: preview_plugins_npm
-    if: needs.preview_plugins_npm.outputs.has_candidates == 'true'
+    if: github.repository == 'openclaw/openclaw' && needs.preview_plugins_npm.outputs.has_candidates == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -184,7 +185,7 @@ jobs:
 
   publish_plugins_npm:
     needs: [preview_plugins_npm, preview_plugin_pack]
-    if: github.event_name == 'workflow_dispatch' && needs.preview_plugins_npm.outputs.has_candidates == 'true'
+    if: github.repository == 'openclaw/openclaw' && github.event_name == 'workflow_dispatch' && needs.preview_plugins_npm.outputs.has_candidates == 'true'
     runs-on: ubuntu-latest
     environment: npm-release
     permissions:
