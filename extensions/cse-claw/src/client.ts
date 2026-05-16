@@ -71,9 +71,21 @@ export type CseClawPostTurnResponse = {
   replay_reference?: Record<string, unknown>;
 };
 
-export type CseClawOperatorStatusResponse = Record<string, unknown>;
+export type CseClawOperatorStatus = {
+  mode: string;
+  entity_session_id: string;
+  latest_cog?: Record<string, unknown> | null;
+  pending_proposals: number;
+  safety: Record<string, unknown>;
+};
 
-export type CseClawOperatorTraceResponse = Record<string, unknown>;
+export type CseClawOperatorTrace = {
+  mode: string;
+  trace_id: string;
+  counts: Record<string, number>;
+  timeline: Array<Record<string, unknown>>;
+  summary: Record<string, unknown>;
+};
 
 async function requestJson<TResponse>(
   config: CseClawConfig,
@@ -135,12 +147,12 @@ export class CseClawClient {
     return postJson<CseClawPostTurnResponse>(this.config, "/v1/claw/turns/post", request);
   }
 
-  operatorStatus(): Promise<CseClawOperatorStatusResponse> {
-    return getJson<CseClawOperatorStatusResponse>(this.config, "/v1/operator/claw/status");
+  operatorStatus(): Promise<CseClawOperatorStatus> {
+    return getJson<CseClawOperatorStatus>(this.config, "/v1/operator/claw/status");
   }
 
-  operatorTrace(traceId: string): Promise<CseClawOperatorTraceResponse> {
-    return getJson<CseClawOperatorTraceResponse>(
+  operatorTrace(traceId: string): Promise<CseClawOperatorTrace> {
+    return getJson<CseClawOperatorTrace>(
       this.config,
       `/v1/operator/claw/traces/${encodeURIComponent(traceId)}`,
     );
