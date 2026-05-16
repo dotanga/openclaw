@@ -35,6 +35,7 @@ describe("CSE_Claw redaction", () => {
         unknownSecret: "do-not-export",
         trigger: { nested: true },
         channelId: 123,
+        chatType: "group",
       }),
     ).toStrictEqual({
       runId: "run-1",
@@ -42,6 +43,7 @@ describe("CSE_Claw redaction", () => {
       sessionKey: "session-1",
       workspaceDir: "/tmp/workspace",
       channelId: 123,
+      chatType: "group",
     });
   });
 });

@@ -37,6 +37,7 @@ export function sanitizeMetadata(input: Record<string, unknown>): Record<string,
     "messageProvider",
     "trigger",
     "channelId",
+    "chatType",
   ]);
   const output: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
