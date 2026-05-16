@@ -147,6 +147,41 @@ description: test skill
     expect(skillFinding.detail).toMatch(/runner\.js:\d+/);
   });
 
+  it("does not report the reviewed Codex app-server stdio transport spawn as critical", async () => {
+    const tmpDir = await makeTmpDir("audit-scanner-codex-reviewed-spawn");
+    const pluginDir = path.join(tmpDir, "extensions", "codex");
+    await fs.mkdir(path.join(pluginDir, "dist"), { recursive: true });
+    await fs.writeFile(
+      path.join(pluginDir, "package.json"),
+      JSON.stringify({
+        name: "@openclaw/codex",
+        openclaw: { extensions: ["./dist/index.js"] },
+      }),
+    );
+    await fs.writeFile(path.join(pluginDir, "dist", "index.js"), "export {};");
+    await fs.writeFile(
+      path.join(pluginDir, "dist", "client-iRf11BEu.js"),
+      [
+        'import { spawn } from "node:child_process";',
+        "function createStdioTransport(invocation, env) {",
+        "  return spawn(invocation.command, invocation.args, {",
+        "    env,",
+        '    detached: process.platform !== "win32",',
+        "    shell: invocation.shell,",
+        '    stdio: ["pipe", "pipe", "pipe"],',
+        "  });",
+        "}",
+      ].join("\n"),
+    );
+
+    const findings = await collectPluginsCodeSafetyFindings({ stateDir: tmpDir });
+    expect(
+      findings.some(
+        (finding) => finding.checkId === "plugins.code_safety" && finding.severity === "critical",
+      ),
+    ).toBe(false);
+  });
+
   it("flags plugin extension entry path traversal in deep audit", async () => {
     const tmpDir = await makeTmpDir("audit-scanner-escape");
     const pluginDir = path.join(tmpDir, "extensions", "escape-plugin");

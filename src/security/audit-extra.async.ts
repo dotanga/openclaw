@@ -204,6 +204,38 @@ function formatCodeSafetyDetails(findings: SkillScanFinding[], rootDir: string):
     .join("\n");
 }
 
+function isTrustedCodexAppServerTransportFinding(params: {
+  pluginName: string;
+  pluginPath: string;
+  finding: SkillScanFinding;
+}): boolean {
+  if (params.pluginName !== "codex" || params.finding.ruleId !== "dangerous-exec") {
+    return false;
+  }
+  const relPath = path.relative(params.pluginPath, params.finding.file).replaceAll("\\", "/");
+  return (
+    /^dist\/client-[A-Za-z0-9_-]+\.js$/.test(relPath) &&
+    params.finding.evidence.includes("spawn(invocation.command, invocation.args")
+  );
+}
+
+function filterTrustedInstalledPluginFindings(params: {
+  pluginName: string;
+  pluginPath: string;
+  summary: SkillScanSummary;
+}): SkillScanSummary {
+  const findings = params.summary.findings.filter(
+    (finding) => !isTrustedCodexAppServerTransportFinding({ ...params, finding }),
+  );
+  return {
+    ...params.summary,
+    findings,
+    critical: findings.filter((finding) => finding.severity === "critical").length,
+    warn: findings.filter((finding) => finding.severity === "warn").length,
+    info: findings.filter((finding) => finding.severity === "info").length,
+  };
+}
+
 async function listInstalledPluginDirs(params: {
   stateDir: string;
   onReadError?: (error: unknown) => void;
@@ -776,7 +808,7 @@ export async function collectPluginsCodeSafetyFindings(params: {
       });
     }
 
-    const summary = await getCodeSafetySummary({
+    const rawSummary = await getCodeSafetySummary({
       dirPath: pluginPath,
       includeFiles: forcedScanEntries,
       summaryCache: params.summaryCache,
@@ -791,9 +823,14 @@ export async function collectPluginsCodeSafetyFindings(params: {
       });
       return null;
     });
-    if (!summary) {
+    if (!rawSummary) {
       continue;
     }
+    const summary = filterTrustedInstalledPluginFindings({
+      pluginName,
+      pluginPath,
+      summary: rawSummary,
+    });
 
     if (summary.critical > 0) {
       const criticalFindings = summary.findings.filter((f) => f.severity === "critical");
