@@ -5,6 +5,7 @@ export type CseClawConfig = {
   maxPromptChars: number;
   maxAssistantChars: number;
   injectAdvisoryContext: boolean;
+  sharedContextMode: "off" | "audit_only" | "advisory";
   logFailures: boolean;
 };
 
@@ -29,6 +30,13 @@ const asString = (value: unknown, fallback: string): string => {
   return trimmed.length > 0 ? trimmed : fallback;
 };
 
+const asSharedContextMode = (value: unknown): CseClawConfig["sharedContextMode"] => {
+  if (value === "off" || value === "audit_only" || value === "advisory") {
+    return value;
+  }
+  return "audit_only";
+};
+
 const asPositiveInteger = (value: unknown, fallback: number, min: number, max: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return fallback;
@@ -50,6 +58,7 @@ export function resolveCseClawConfig(input: unknown): CseClawConfig {
       20_000,
     ),
     injectAdvisoryContext: asBoolean(config.injectAdvisoryContext, true),
+    sharedContextMode: asSharedContextMode(config.sharedContextMode),
     logFailures: asBoolean(config.logFailures, true),
   };
 }

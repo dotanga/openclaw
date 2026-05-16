@@ -31,6 +31,8 @@ type BridgeHealthState = {
   lastTraceId?: string;
 };
 
+type ChatType = "direct" | "group" | "channel";
+
 const runTraces = new Map<string, TraceState>();
 const bridgeHealth: BridgeHealthState = {
   preTurnSuccessCount: 0,
@@ -90,6 +92,48 @@ function traceKey(ctx: {
   sessionKey?: string;
 }): string | undefined {
   return ctx.runId ?? ctx.sessionId ?? ctx.sessionKey;
+}
+
+function normalizeChatType(value: unknown): ChatType | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "direct" || normalized === "dm") {
+    return "direct";
+  }
+  if (normalized === "group" || normalized === "guild") {
+    return "group";
+  }
+  if (normalized === "channel" || normalized === "room" || normalized === "space") {
+    return "channel";
+  }
+  return undefined;
+}
+
+function inferChatType(ctx: Record<string, unknown>): ChatType | undefined {
+  const explicit =
+    normalizeChatType(ctx.chatType) ??
+    normalizeChatType(ctx.ChatType) ??
+    normalizeChatType(ctx.chat_type);
+  if (explicit) {
+    return explicit;
+  }
+  const sessionKey = typeof ctx.sessionKey === "string" ? ctx.sessionKey.toLowerCase() : "";
+  if (sessionKey.includes(":group:")) {
+    return "group";
+  }
+  if (sessionKey.includes(":channel:")) {
+    return "channel";
+  }
+  if (sessionKey.includes(":dm:") || sessionKey.includes(":direct:")) {
+    return "direct";
+  }
+  return undefined;
+}
+
+function isSharedChatType(chatType: ChatType | undefined): boolean {
+  return chatType === "group" || chatType === "channel";
 }
 
 function logBridgeFailure(api: OpenClawPluginApi, config: CseClawConfig, message: string): void {
@@ -208,6 +252,10 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
       if (prompt.trim().length === 0) {
         return undefined;
       }
+      const chatType = inferChatType(ctx);
+      if (isSharedChatType(chatType) && config.sharedContextMode === "off") {
+        return undefined;
+      }
       try {
         const result = await new CseClawClient(config).preTurn({
           schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
@@ -216,7 +264,7 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
             kind: "TurnPreEvent",
             turn_id: ctx.runId,
             channel: ctx.messageProvider ?? ctx.channelId,
-            chat_type: undefined,
+            chat_type: chatType,
             source_id: "openclaw",
             user_text: redactForCse(prompt, config.maxPromptChars),
             trusted_metadata: sanitizeMetadata({
@@ -230,12 +278,13 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
               messageProvider: ctx.messageProvider,
               trigger: ctx.trigger,
               channelId: ctx.channelId,
+              chatType,
             }),
             context_refs: [],
           },
           turn_id: ctx.runId,
           channel: ctx.messageProvider ?? ctx.channelId,
-          chat_type: undefined,
+          chat_type: chatType,
           source_id: "openclaw",
           user_text: redactForCse(prompt, config.maxPromptChars),
           trusted_metadata: sanitizeMetadata({
@@ -249,6 +298,7 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
             messageProvider: ctx.messageProvider,
             trigger: ctx.trigger,
             channelId: ctx.channelId,
+            chatType,
           }),
           context_refs: [],
         });
@@ -257,7 +307,10 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
           runTraces.set(key, { traceId: result.trace_id });
         }
         recordBridgeSuccess("pre", result.trace_id);
-        if (!config.injectAdvisoryContext) {
+        const shouldInjectAdvisory =
+          config.injectAdvisoryContext &&
+          (!isSharedChatType(chatType) || config.sharedContextMode === "advisory");
+        if (!shouldInjectAdvisory) {
           return undefined;
         }
         const advisory = buildAdvisoryPrompt(result);

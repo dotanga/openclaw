@@ -80,6 +80,7 @@ describe("CSE_Claw plugin hooks", () => {
         sessionId: "session-1",
         messageProvider: "telegram",
         channelId: "telegram",
+        chatType: "direct",
       },
     );
 
@@ -91,10 +92,12 @@ describe("CSE_Claw plugin hooks", () => {
           kind: "TurnPreEvent",
           turn_id: "run-1",
           source_id: "openclaw",
+          chat_type: "direct",
           user_text: "hello token=[REDACTED]",
         }),
         turn_id: "run-1",
         channel: "telegram",
+        chat_type: "direct",
         source_id: "openclaw",
         user_text: "hello token=[REDACTED]",
       }),
@@ -197,6 +200,86 @@ describe("CSE_Claw plugin hooks", () => {
 
     expect(operatorTraceMock).toHaveBeenCalledWith("trace-1");
     expect(respond).toHaveBeenCalledWith(true, { trace_id: "trace-1", events: [] });
+  });
+
+  it("keeps shared contexts audit-only by default", async () => {
+    preTurnMock.mockResolvedValueOnce({
+      trace_id: "trace-group",
+      event_id: "event-1",
+      experience_id: "experience-1",
+      cog_snapshot_id: "cog-1",
+      behaviour_id: "behaviour-1",
+      advisory_context: "private continuity hint",
+    });
+    const { handlers } = createApi({ enabled: true, endpoint: "http://127.0.0.1:8000" });
+
+    const result = await handlers.get("before_prompt_build")?.(
+      { prompt: "hello from group" },
+      {
+        runId: "run-group",
+        sessionKey: "agent:main:discord:group:general",
+        messageProvider: "discord",
+        channelId: "discord",
+      },
+    );
+
+    expect(preTurnMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: expect.objectContaining({
+          chat_type: "group",
+          user_text: "hello from group",
+        }),
+        chat_type: "group",
+      }),
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it("can disable CSE entirely for shared contexts", async () => {
+    const { handlers } = createApi({
+      enabled: true,
+      endpoint: "http://127.0.0.1:8000",
+      sharedContextMode: "off",
+    });
+
+    const result = await handlers.get("before_prompt_build")?.(
+      { prompt: "hello from channel" },
+      {
+        runId: "run-channel",
+        sessionKey: "agent:main:slack:channel:general",
+      },
+    );
+
+    expect(result).toBeUndefined();
+    expect(preTurnMock).not.toHaveBeenCalled();
+  });
+
+  it("allows explicit advisory injection in shared contexts", async () => {
+    preTurnMock.mockResolvedValueOnce({
+      trace_id: "trace-channel",
+      event_id: "event-1",
+      experience_id: "experience-1",
+      cog_snapshot_id: "cog-1",
+      behaviour_id: "behaviour-1",
+      advisory_context: "shared-safe hint",
+    });
+    const { handlers } = createApi({
+      enabled: true,
+      endpoint: "http://127.0.0.1:8000",
+      sharedContextMode: "advisory",
+    });
+
+    const result = await handlers.get("before_prompt_build")?.(
+      { prompt: "hello from channel" },
+      {
+        runId: "run-channel",
+        sessionKey: "agent:main:slack:channel:general",
+      },
+    );
+
+    expect(result).toStrictEqual({
+      prependContext: expect.stringContaining("shared-safe hint"),
+    });
   });
 
   it("posts assistant output back to the same CSE trace without OpenClaw writes", async () => {
