@@ -142,4 +142,31 @@ describe("CSE_Claw client", () => {
 
     expect(release).toHaveBeenCalledTimes(1);
   });
+
+  it("reads operator status and trace diagnostics with SSRF guard", async () => {
+    queueGuardedResponse(new Response(JSON.stringify({ ready: true }), { status: 200 }));
+    queueGuardedResponse(
+      new Response(JSON.stringify({ trace_id: "trace/id", events: [] }), { status: 200 }),
+    );
+    const client = new CseClawClient(
+      resolveCseClawConfig({ endpoint: "http://127.0.0.1:9999/", timeoutMs: 500 }),
+    );
+
+    await expect(client.operatorStatus()).resolves.toEqual({ ready: true });
+    expect(lastGuardRequest()).toMatchObject({
+      url: "http://127.0.0.1:9999/v1/operator/claw/status",
+      auditContext: "cse-claw",
+    });
+    expect(lastGuardRequest().init).toMatchObject({ method: "GET" });
+
+    await expect(client.operatorTrace("trace/id")).resolves.toEqual({
+      trace_id: "trace/id",
+      events: [],
+    });
+    expect(lastGuardRequest()).toMatchObject({
+      url: "http://127.0.0.1:9999/v1/operator/claw/traces/trace%2Fid",
+      auditContext: "cse-claw",
+    });
+    expect(lastGuardRequest().init).toMatchObject({ method: "GET" });
+  });
 });
