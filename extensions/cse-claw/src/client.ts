@@ -71,10 +71,14 @@ export type CseClawPostTurnResponse = {
   replay_reference?: Record<string, unknown>;
 };
 
-async function postJson<TResponse>(
+export type CseClawOperatorStatusResponse = Record<string, unknown>;
+
+export type CseClawOperatorTraceResponse = Record<string, unknown>;
+
+async function requestJson<TResponse>(
   config: CseClawConfig,
   path: string,
-  body: unknown,
+  init: RequestInit,
 ): Promise<TResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -82,9 +86,7 @@ async function postJson<TResponse>(
     const { response, release } = await fetchWithSsrFGuard({
       url: `${config.endpoint}${path}`,
       init: {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        ...init,
         signal: controller.signal,
       },
       policy: ssrfPolicyFromHttpBaseUrlAllowedHostname(config.endpoint),
@@ -106,6 +108,22 @@ async function postJson<TResponse>(
   }
 }
 
+async function getJson<TResponse>(config: CseClawConfig, path: string): Promise<TResponse> {
+  return requestJson<TResponse>(config, path, { method: "GET" });
+}
+
+async function postJson<TResponse>(
+  config: CseClawConfig,
+  path: string,
+  body: unknown,
+): Promise<TResponse> {
+  return requestJson<TResponse>(config, path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export class CseClawClient {
   constructor(private readonly config: CseClawConfig) {}
 
@@ -115,5 +133,16 @@ export class CseClawClient {
 
   postTurn(request: CseClawPostTurnRequest): Promise<CseClawPostTurnResponse> {
     return postJson<CseClawPostTurnResponse>(this.config, "/v1/claw/turns/post", request);
+  }
+
+  operatorStatus(): Promise<CseClawOperatorStatusResponse> {
+    return getJson<CseClawOperatorStatusResponse>(this.config, "/v1/operator/claw/status");
+  }
+
+  operatorTrace(traceId: string): Promise<CseClawOperatorTraceResponse> {
+    return getJson<CseClawOperatorTraceResponse>(
+      this.config,
+      `/v1/operator/claw/traces/${encodeURIComponent(traceId)}`,
+    );
   }
 }

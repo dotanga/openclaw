@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { postTurnMock, preTurnMock } = vi.hoisted(() => ({
+const { operatorStatusMock, operatorTraceMock, postTurnMock, preTurnMock } = vi.hoisted(() => ({
+  operatorStatusMock: vi.fn(),
+  operatorTraceMock: vi.fn(),
   postTurnMock: vi.fn(),
   preTurnMock: vi.fn(),
 }));
@@ -15,6 +17,8 @@ vi.mock("./src/client.js", () => ({
   ],
   CseClawClient: vi.fn(function CseClawClientMock() {
     return {
+      operatorStatus: operatorStatusMock,
+      operatorTrace: operatorTraceMock,
       preTurn: preTurnMock,
       postTurn: postTurnMock,
     };
@@ -27,19 +31,29 @@ type Handler = (event: Record<string, unknown>, ctx: Record<string, unknown>) =>
 
 function createApi(pluginConfig: Record<string, unknown>) {
   const handlers = new Map<string, Handler>();
+  const gatewayMethods = new Map<string, Handler>();
   const api = {
     logger: { warn: vi.fn() },
     on: vi.fn((eventName: string, handler: Handler) => {
       handlers.set(eventName, handler);
     }),
     pluginConfig,
+    registerGatewayMethod: vi.fn((method: string, handler: Handler) => {
+      gatewayMethods.set(method, handler);
+    }),
     runtime: {},
   };
   registerCseClawPlugin(api as never);
-  return { api, handlers };
+  return { api, gatewayMethods, handlers };
+}
+
+function createResponder() {
+  return vi.fn();
 }
 
 afterEach(() => {
+  operatorStatusMock.mockReset();
+  operatorTraceMock.mockReset();
   postTurnMock.mockReset();
   preTurnMock.mockReset();
   vi.restoreAllMocks();
@@ -89,6 +103,100 @@ describe("CSE_Claw plugin hooks", () => {
       prependContext: expect.stringContaining("Prefer careful verification."),
     });
     expect(JSON.stringify(result)).toContain("grants no tool permissions");
+  });
+
+  it("exposes disabled CSE_Claw status without probing the backend", async () => {
+    const { api, gatewayMethods } = createApi({ enabled: false });
+    const respond = createResponder();
+
+    await gatewayMethods.get("cseClaw.status")?.({ respond }, {});
+
+    expect(api.registerGatewayMethod).toHaveBeenCalledWith("cseClaw.status", expect.any(Function), {
+      scope: "operator.read",
+    });
+    expect(operatorStatusMock).not.toHaveBeenCalled();
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        enabled: false,
+        backend: { reachable: false, reason: "disabled" },
+        bridge: expect.objectContaining({
+          preTurnSuccessCount: expect.any(Number),
+          postTurnFailureCount: expect.any(Number),
+        }),
+      }),
+    );
+  });
+
+  it("tracks healthy bridge state and exposes backend status", async () => {
+    preTurnMock.mockResolvedValueOnce({
+      trace_id: "trace-healthy",
+      event_id: "event-1",
+      experience_id: "experience-1",
+      cog_snapshot_id: "cog-1",
+      behaviour_id: "behaviour-1",
+      advisory_context: "steady",
+    });
+    postTurnMock.mockResolvedValueOnce({
+      trace_id: "trace-healthy",
+      event_id: "event-2",
+      artifact_id: "artifact-1",
+      outcome: "llm_output",
+      writes_canonical_openclaw_state: false,
+    });
+    operatorStatusMock.mockResolvedValueOnce({ ready: true });
+    const { gatewayMethods, handlers } = createApi({
+      enabled: true,
+      endpoint: "http://127.0.0.1:8000",
+    });
+
+    await handlers.get("before_prompt_build")?.({ prompt: "hello" }, { runId: "run-healthy" });
+    await handlers.get("llm_output")?.(
+      { runId: "run-healthy", sessionId: "session-1", assistantTexts: ["assistant"] },
+      { runId: "run-healthy" },
+    );
+    const respond = createResponder();
+    await gatewayMethods.get("cseClaw.status")?.({ respond }, {});
+
+    expect(respond).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        enabled: true,
+        backend: { reachable: true, status: { ready: true } },
+        bridge: expect.objectContaining({
+          lastTraceId: "trace-healthy",
+          preTurnSuccessCount: expect.any(Number),
+          postTurnSuccessCount: expect.any(Number),
+        }),
+      }),
+    );
+  });
+
+  it("reports disconnected backend status with bounded redacted failure details", async () => {
+    operatorStatusMock.mockRejectedValueOnce(
+      new Error("CSE backend 503 token=super-secret " + "x".repeat(800)),
+    );
+    const { gatewayMethods } = createApi({ enabled: true, endpoint: "http://127.0.0.1:8000" });
+    const respond = createResponder();
+
+    await gatewayMethods.get("cseClaw.status")?.({ respond }, {});
+
+    const payload = respond.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(payload.backend).toMatchObject({ reachable: false });
+    expect(JSON.stringify(payload)).toContain("token=[REDACTED]");
+    expect(JSON.stringify(payload)).not.toContain("super-secret");
+    expect(JSON.stringify(payload).length).toBeLessThan(1600);
+  });
+
+  it("fetches an operator trace by trace id", async () => {
+    operatorTraceMock.mockResolvedValueOnce({ trace_id: "trace-1", events: [] });
+    const { gatewayMethods } = createApi({ enabled: true, endpoint: "http://127.0.0.1:8000" });
+    const respond = createResponder();
+
+    await gatewayMethods.get("cseClaw.trace")?.({ params: { traceId: "trace-1" }, respond }, {});
+
+    expect(operatorTraceMock).toHaveBeenCalledWith("trace-1");
+    expect(respond).toHaveBeenCalledWith(true, { trace_id: "trace-1", events: [] });
   });
 
   it("posts assistant output back to the same CSE trace without OpenClaw writes", async () => {
