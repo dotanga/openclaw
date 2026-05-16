@@ -27,11 +27,37 @@ Put the plugin config under `plugins.entries["cse-claw"].config`:
   plugins: {
     entries: {
       "cse-claw": {
+        enabled: false,
+        config: {
+          enabled: false,
+          endpoint: "http://127.0.0.1:8080",
+          timeoutMs: 1500,
+          maxPromptChars: 2000,
+          maxAssistantChars: 4000,
+          injectAdvisoryContext: true,
+          sharedContextMode: "audit_only",
+          logFailures: true,
+        },
+      },
+    },
+  },
+}
+```
+
+Minimal local-only enabled config:
+
+```json5
+{
+  plugins: {
+    entries: {
+      "cse-claw": {
         enabled: true,
         config: {
           enabled: true,
           endpoint: "http://127.0.0.1:8080",
           timeoutMs: 1500,
+          maxPromptChars: 2000,
+          maxAssistantChars: 4000,
           injectAdvisoryContext: true,
           sharedContextMode: "audit_only",
           logFailures: true,
@@ -44,11 +70,34 @@ Put the plugin config under `plugins.entries["cse-claw"].config`:
 
 Keep `injectAdvisoryContext: false` if you only want observation/audit recording without adding CSE advisory context to model prompts.
 
+### Config reference
+
+| Field                   | Default                 | Purpose                                                                                                         |
+| ----------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `enabled`               | `false`                 | Opt-in switch for CSE_Claw. When false, the extension registers diagnostics but does not call CSE during turns. |
+| `endpoint`              | `http://127.0.0.1:8080` | Base URL for the CSE API. Keep this loopback/local unless you have explicitly secured a different deployment.   |
+| `timeoutMs`             | `1500`                  | Per-call CSE timeout. Failures and timeouts fail open so OpenClaw continues without advisory context.           |
+| `maxPromptChars`        | `2000`                  | Maximum redacted user prompt characters sent in `TurnPreEvent.user_text`.                                       |
+| `maxAssistantChars`     | `4000`                  | Maximum redacted assistant/output characters sent in `TurnPostEvent.assistant_text`.                            |
+| `injectAdvisoryContext` | `true`                  | Allows CSE pre-turn advisory text to be prepended to the model context. Set false for observe-only/audit mode.  |
+| `sharedContextMode`     | `audit_only`            | Privacy posture for group/channel turns. See shared-context modes below.                                        |
+| `logFailures`           | `true`                  | Logs skipped CSE bridge calls at warning level while preserving fail-open behavior.                             |
+
 `sharedContextMode` controls group/channel privacy posture:
 
 - `audit_only` (default): CSE can receive redacted turn observations for replay/audit, but its advisory context is not injected into shared prompts.
 - `off`: group/channel turns do not call CSE.
 - `advisory`: group/channel turns may inject CSE advisory context. Use only when the operator has explicitly decided the shared context may receive CSE-influenced guidance.
+
+### Data sent to CSE
+
+When enabled, CSE_Claw sends versioned bridge envelopes to the configured CSE backend:
+
+- Pre-turn: `schema_version`, capability flags, `TurnPreEvent`, source/channel/chat type, bounded redacted user text, bounded trusted runtime metadata, and context reference ids.
+- Post-turn: `schema_version`, capability flags, `TurnPostEvent`, trace id, bounded redacted assistant/output text, tool-call summary placeholder, outcome, and bounded metadata.
+- Operator diagnostics: status and trace lookup requests can query CSE operator endpoints, but OpenClaw-side status does not include raw prompts, assistant text, tokens, or secrets.
+
+Redaction is best-effort for common token/password patterns, then truncation is applied. Treat the CSE endpoint as local/private infrastructure, not as a generic external webhook.
 
 ## Operator smoke test
 

@@ -16,6 +16,13 @@ function manifestConfigProperties(): Record<string, { default?: unknown }> {
   return manifest.configSchema?.properties ?? {};
 }
 
+function readReadme(): string {
+  return fs.readFileSync(
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../README.md"),
+    "utf8",
+  );
+}
+
 describe("CSE_Claw config", () => {
   it("is disabled by default and points at the local backend", () => {
     expect(resolveCseClawConfig(undefined)).toStrictEqual({
@@ -102,5 +109,20 @@ describe("CSE_Claw config", () => {
     };
 
     expect(resolveCseClawConfig(manifestBackedConfig)).toStrictEqual(manifestBackedConfig);
+  });
+
+  it("documents every operator config field and default in the README", () => {
+    const readme = readReadme();
+    const properties = manifestConfigProperties();
+
+    for (const [key, property] of Object.entries(properties)) {
+      expect(readme).toContain(`\`${key}\``);
+      expect(readme).toContain(String(property.default));
+    }
+
+    expect(readme).toContain("Minimal local-only enabled config");
+    expect(readme).toContain("Failures and timeouts fail open");
+    expect(readme).toContain("group/channel privacy posture");
+    expect(readme).toContain("Data sent to CSE");
   });
 });
