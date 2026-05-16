@@ -33,6 +33,7 @@ Put the plugin config under `plugins.entries["cse-claw"].config`:
           endpoint: "http://127.0.0.1:8080",
           timeoutMs: 1500,
           injectAdvisoryContext: true,
+          sharedContextMode: "audit_only",
           logFailures: true,
         },
       },
@@ -42,6 +43,12 @@ Put the plugin config under `plugins.entries["cse-claw"].config`:
 ```
 
 Keep `injectAdvisoryContext: false` if you only want observation/audit recording without adding CSE advisory context to model prompts.
+
+`sharedContextMode` controls group/channel privacy posture:
+
+- `audit_only` (default): CSE can receive redacted turn observations for replay/audit, but its advisory context is not injected into shared prompts.
+- `off`: group/channel turns do not call CSE.
+- `advisory`: group/channel turns may inject CSE advisory context. Use only when the operator has explicitly decided the shared context may receive CSE-influenced guidance.
 
 ## Operator smoke test
 
@@ -72,4 +79,5 @@ Expected results:
 - CSE suggestions are advisory context only.
 - OpenClaw user/system/developer instructions and approval gates always win.
 - CSE Claw redacts common token/password patterns and truncates prompt/output text before sending it to CSE.
+- Group/channel contexts default to audit-only so private CSE continuity is not injected into shared conversations by accident.
 - Failures are fail-open for OpenClaw operation: the turn continues without CSE advisory context.

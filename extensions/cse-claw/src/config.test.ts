@@ -25,6 +25,7 @@ describe("CSE_Claw config", () => {
       maxPromptChars: 2_000,
       maxAssistantChars: 4_000,
       injectAdvisoryContext: true,
+      sharedContextMode: "audit_only",
       logFailures: true,
     });
   });
@@ -38,6 +39,7 @@ describe("CSE_Claw config", () => {
         maxPromptChars: 99_999,
         maxAssistantChars: 1,
         injectAdvisoryContext: false,
+        sharedContextMode: "advisory",
         logFailures: false,
       }),
     ).toStrictEqual({
@@ -47,6 +49,7 @@ describe("CSE_Claw config", () => {
       maxPromptChars: 12_000,
       maxAssistantChars: 100,
       injectAdvisoryContext: false,
+      sharedContextMode: "advisory",
       logFailures: false,
     });
   });
@@ -75,6 +78,7 @@ describe("CSE_Claw config", () => {
         "logFailures",
         "maxAssistantChars",
         "maxPromptChars",
+        "sharedContextMode",
         "timeoutMs",
       ].toSorted(),
     );
@@ -93,6 +97,7 @@ describe("CSE_Claw config", () => {
       maxPromptChars: 777,
       maxAssistantChars: 888,
       injectAdvisoryContext: false,
+      sharedContextMode: "off",
       logFailures: false,
     };
 

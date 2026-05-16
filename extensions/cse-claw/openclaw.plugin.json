@@ -42,6 +42,11 @@
         "type": "boolean",
         "default": true
       },
+      "sharedContextMode": {
+        "type": "string",
+        "enum": ["off", "audit_only", "advisory"],
+        "default": "audit_only"
+      },
       "logFailures": {
         "type": "boolean",
         "default": true
@@ -74,6 +79,11 @@
     "injectAdvisoryContext": {
       "label": "Inject Advisory Context",
       "help": "When disabled, CSE pre-turn calls still run for observation but advisory context is not injected into the model prompt.",
+      "advanced": true
+    },
+    "sharedContextMode": {
+      "label": "Shared Context Mode",
+      "help": "Controls CSE behavior for group/channel contexts. Default audit_only records turns without injecting CSE advisory context.",
       "advanced": true
     },
     "logFailures": {
