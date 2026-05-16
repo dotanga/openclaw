@@ -167,10 +167,11 @@ function registerOperatorMethods(api: OpenClawPluginApi): void {
     "cseClaw.trace",
     async ({ params, respond }) => {
       const config = resolveCurrentConfig(api);
-      const traceId =
+      const traceIdRaw =
         params && typeof params === "object" && "traceId" in params
-          ? String((params as { traceId?: unknown }).traceId ?? "").trim()
-          : "";
+          ? (params as { traceId?: unknown }).traceId
+          : undefined;
+      const traceId = typeof traceIdRaw === "string" ? traceIdRaw.trim() : "";
       if (!traceId) {
         respond(false, undefined, { code: "BAD_REQUEST", message: "traceId is required" });
         return;
