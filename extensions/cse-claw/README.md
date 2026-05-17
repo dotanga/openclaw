@@ -99,6 +99,19 @@ When enabled, CSE_Claw sends versioned bridge envelopes to the configured CSE ba
 
 Redaction is best-effort for common token/password patterns, then truncation is applied. Treat the CSE endpoint as local/private infrastructure, not as a generic external webhook.
 
+### Evaluation metrics
+
+`cseClaw.status` exposes local evaluation-only counters under `evaluation`:
+
+- pre-call and post-call latency samples, including latest and average latency in milliseconds
+- advisory injection rate, based on turns where advisory context was eligible to be injected
+- backend failure rate across observed CSE backend failures
+- recent outcome artifacts that correlate CSE trace ids with OpenClaw turn outcomes
+
+These metrics are diagnostic artifacts. They are not tool permissions, policy input, approval state, or system-prompt authority. The status payload marks this boundary explicitly with `authorityBoundary.evaluationSignalsGrantToolPermissions: false` and `authorityBoundary.evaluationSignalsOverridePolicy: false`.
+
+Do not treat extractor confidence as the same thing as empirical causal stability confidence. CSE_Claw evaluation metrics only support later replay/evaluation of whether CSE traces correlate with better outcomes; they do not make runtime safety or permission decisions.
+
 ## Operator smoke test
 
 With CSE running, send a synthetic pre/post turn directly to the CSE bridge:

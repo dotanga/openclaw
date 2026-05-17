@@ -236,6 +236,29 @@ describe("CSE_Claw plugin hooks", () => {
           preTurnSuccessCount: expect.any(Number),
           postTurnSuccessCount: expect.any(Number),
         }),
+        evaluation: expect.objectContaining({
+          metrics: expect.objectContaining({
+            preCallCount: expect.any(Number),
+            postCallCount: expect.any(Number),
+            averagePreCallLatencyMs: expect.any(Number),
+            averagePostCallLatencyMs: expect.any(Number),
+            advisoryInjectionRate: expect.any(Number),
+            backendFailureRate: expect.any(Number),
+          }),
+          recentOutcomes: expect.arrayContaining([
+            expect.objectContaining({
+              traceId: "trace-healthy",
+              turnId: "run-healthy",
+              outcome: "llm_output",
+              postLatencyMs: expect.any(Number),
+            }),
+          ]),
+          authorityBoundary: {
+            evaluationSignalsGrantToolPermissions: false,
+            evaluationSignalsOverridePolicy: false,
+            confidenceKind: "empirical_causal_stability_only",
+          },
+        }),
       }),
     );
   });
@@ -253,7 +276,7 @@ describe("CSE_Claw plugin hooks", () => {
     expect(payload.backend).toMatchObject({ reachable: false });
     expect(JSON.stringify(payload)).toContain("token=[REDACTED]");
     expect(JSON.stringify(payload)).not.toContain("super-secret");
-    expect(JSON.stringify(payload).length).toBeLessThan(1600);
+    expect(JSON.stringify(payload.backend).length).toBeLessThan(700);
   });
 
   it("fetches an operator trace by trace id", async () => {
