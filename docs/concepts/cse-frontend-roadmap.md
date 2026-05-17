@@ -8,6 +8,8 @@ The short version:
 - **OpenClaw** owns embodiment: chat surfaces, tools, files, approvals, channels, media, sessions, subagents, and user-facing runtime controls.
 - **CSE_Claw** is the bridge between them. It lets OpenClaw send turns and observations to CSE, and lets CSE return advisory cognitive context and auditable proposals.
 
+The proposal inbox design is defined in [cse-proposal-inbox.md](./cse-proposal-inbox.md).
+
 This is not a plan to let CSE bypass OpenClaw policy. CSE can influence the assistant through explicit, inspectable signals; OpenClaw remains the safety, permission, execution, and delivery boundary.
 
 ## Current status
@@ -136,6 +138,8 @@ Examples:
 - `FOLLOW_UP_PROPOSAL`
 
 Only OpenClaw/operator-controlled flows may apply those proposals.
+
+See [cse-proposal-inbox.md](./cse-proposal-inbox.md) for proposal types, lifecycle states, approval boundaries, surfacing rules, and replay metadata.
 
 ### 4. Replayability before autonomy
 
