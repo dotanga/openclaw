@@ -4,7 +4,7 @@ Disabled-by-default passive bridge from OpenClaw turns to a local CSE backend.
 
 CSE Claw treats CSE as an auditable cognition/continuity layer and OpenClaw as the body/tools/channels runtime. It is deliberately advisory-only: CSE responses do **not** grant tool permissions, mutate OpenClaw prompts or safeguards, send external messages, or write OpenClaw memory automatically.
 
-For the broader architecture and staged plan, see [`docs/concepts/cse-frontend-roadmap.md`](../../docs/concepts/cse-frontend-roadmap.md).
+For the broader architecture and staged plan, see [`docs/concepts/cse-frontend-roadmap.md`](../../docs/concepts/cse-frontend-roadmap.md). The operator-mediated proposal inbox design is in [`docs/concepts/cse-proposal-inbox.md`](../../docs/concepts/cse-proposal-inbox.md).
 
 ## Prerequisites
 
@@ -139,6 +139,7 @@ Expected results:
 ## Safety contract
 
 - CSE suggestions are advisory context only.
+- CSE proposals are pending evidence artifacts until a trusted operator or approved OpenClaw workflow accepts them.
 - OpenClaw user/system/developer instructions and approval gates always win.
 - CSE Claw redacts common token/password patterns and truncates prompt/output text before sending it to CSE.
 - Group/channel contexts default to audit-only so private CSE continuity is not injected into shared conversations by accident.
