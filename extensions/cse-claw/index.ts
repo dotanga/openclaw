@@ -14,6 +14,7 @@ import { redactForCse, sanitizeMetadata } from "./src/redaction.js";
 
 type TraceState = {
   traceId: string;
+  turnId?: string;
   lastPostAtMs?: number;
 };
 
@@ -33,8 +34,44 @@ type BridgeHealthState = {
   lastTraceId?: string;
 };
 
+type EvaluationOutcomeArtifact = {
+  traceId: string;
+  turnId?: string;
+  outcome: string;
+  atMs: number;
+  postLatencyMs?: number;
+};
+
+type BridgeEvaluationMetrics = {
+  preCallCount: number;
+  postCallCount: number;
+  preCallLatencyTotalMs: number;
+  postCallLatencyTotalMs: number;
+  advisoryEligibleCount: number;
+  advisoryInjectedCount: number;
+  backendFailureCount: number;
+  lastPreCallLatencyMs?: number;
+  lastPostCallLatencyMs?: number;
+};
+
+type BridgeEvaluationSnapshot = {
+  metrics: BridgeEvaluationMetrics & {
+    averagePreCallLatencyMs: number | null;
+    averagePostCallLatencyMs: number | null;
+    advisoryInjectionRate: number | null;
+    backendFailureRate: number | null;
+  };
+  recentOutcomes: EvaluationOutcomeArtifact[];
+  authorityBoundary: {
+    evaluationSignalsGrantToolPermissions: false;
+    evaluationSignalsOverridePolicy: false;
+    confidenceKind: "empirical_causal_stability_only";
+  };
+};
+
 type ChatType = "direct" | "group" | "channel";
 
+const MAX_EVALUATION_OUTCOMES = 20;
 const runTraces = new Map<string, TraceState>();
 const bridgeHealth: BridgeHealthState = {
   preTurnSuccessCount: 0,
@@ -42,6 +79,16 @@ const bridgeHealth: BridgeHealthState = {
   postTurnSuccessCount: 0,
   postTurnFailureCount: 0,
 };
+const bridgeEvaluation: BridgeEvaluationMetrics = {
+  preCallCount: 0,
+  postCallCount: 0,
+  preCallLatencyTotalMs: 0,
+  postCallLatencyTotalMs: 0,
+  advisoryEligibleCount: 0,
+  advisoryInjectedCount: 0,
+  backendFailureCount: 0,
+};
+const recentEvaluationOutcomes: EvaluationOutcomeArtifact[] = [];
 
 function boundedFailureMessage(error: unknown): string {
   return redactForCse(String(error), 500).replace(/\s+/g, " ").slice(0, 500);
@@ -70,12 +117,78 @@ function recordBridgeFailure(phase: BridgeFailure["phase"], error: unknown): voi
     atMs: Date.now(),
     message: boundedFailureMessage(error),
   };
+  bridgeEvaluation.backendFailureCount += 1;
 }
 
 function bridgeHealthSnapshot(): BridgeHealthState {
   return {
     ...bridgeHealth,
     lastFailure: bridgeHealth.lastFailure ? { ...bridgeHealth.lastFailure } : undefined,
+  };
+}
+
+function recordPreCallLatency(latencyMs: number): void {
+  bridgeEvaluation.preCallCount += 1;
+  bridgeEvaluation.preCallLatencyTotalMs += latencyMs;
+  bridgeEvaluation.lastPreCallLatencyMs = latencyMs;
+}
+
+function recordPostCallLatency(latencyMs: number): void {
+  bridgeEvaluation.postCallCount += 1;
+  bridgeEvaluation.postCallLatencyTotalMs += latencyMs;
+  bridgeEvaluation.lastPostCallLatencyMs = latencyMs;
+}
+
+function recordAdvisoryDecision(injected: boolean): void {
+  bridgeEvaluation.advisoryEligibleCount += 1;
+  if (injected) {
+    bridgeEvaluation.advisoryInjectedCount += 1;
+  }
+}
+
+function recordEvaluationOutcome(artifact: EvaluationOutcomeArtifact): void {
+  recentEvaluationOutcomes.unshift(artifact);
+  recentEvaluationOutcomes.splice(MAX_EVALUATION_OUTCOMES);
+}
+
+function ratio(numerator: number, denominator: number): number | null {
+  return denominator > 0 ? numerator / denominator : null;
+}
+
+function bridgeEvaluationSnapshot(): BridgeEvaluationSnapshot {
+  const totalBackendCalls =
+    bridgeEvaluation.preCallCount +
+    bridgeEvaluation.postCallCount +
+    bridgeEvaluation.backendFailureCount;
+  return {
+    metrics: {
+      ...bridgeEvaluation,
+      averagePreCallLatencyMs: ratio(
+        bridgeEvaluation.preCallLatencyTotalMs,
+        bridgeEvaluation.preCallCount,
+      ),
+      averagePostCallLatencyMs: ratio(
+        bridgeEvaluation.postCallLatencyTotalMs,
+        bridgeEvaluation.postCallCount,
+      ),
+      advisoryInjectionRate: ratio(
+        bridgeEvaluation.advisoryInjectedCount,
+        bridgeEvaluation.advisoryEligibleCount,
+      ),
+      backendFailureRate: ratio(bridgeEvaluation.backendFailureCount, totalBackendCalls),
+    },
+    recentOutcomes: recentEvaluationOutcomes.map((artifact) => ({
+      traceId: artifact.traceId,
+      turnId: artifact.turnId,
+      outcome: artifact.outcome,
+      atMs: artifact.atMs,
+      postLatencyMs: artifact.postLatencyMs,
+    })),
+    authorityBoundary: {
+      evaluationSignalsGrantToolPermissions: false,
+      evaluationSignalsOverridePolicy: false,
+      confidenceKind: "empirical_causal_stability_only",
+    },
   };
 }
 
@@ -221,10 +334,12 @@ async function postObservation(params: {
   api: OpenClawPluginApi;
   config: CseClawConfig;
   traceId: string;
+  turnId?: string;
   assistantText: string;
   outcome: string;
   metadata: Record<string, unknown>;
 }): Promise<void> {
+  const startedAtMs = Date.now();
   try {
     await new CseClawClient(params.config).postTurn({
       schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
@@ -243,7 +358,16 @@ async function postObservation(params: {
       outcome: params.outcome,
       metadata: params.metadata,
     });
+    const latencyMs = Date.now() - startedAtMs;
+    recordPostCallLatency(latencyMs);
     recordBridgeSuccess("post", params.traceId);
+    recordEvaluationOutcome({
+      traceId: params.traceId,
+      turnId: params.turnId,
+      outcome: params.outcome,
+      atMs: Date.now(),
+      postLatencyMs: latencyMs,
+    });
   } catch (error) {
     recordBridgeFailure("post", error);
     logBridgeFailure(params.api, params.config, `post-turn observation skipped: ${String(error)}`);
@@ -262,6 +386,7 @@ function registerOperatorMethods(api: OpenClawPluginApi): void {
         schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
         capabilities: [...CSE_CLAW_BRIDGE_CAPABILITIES],
         bridge: bridgeHealthSnapshot(),
+        evaluation: bridgeEvaluationSnapshot(),
       };
       if (!config.enabled) {
         respond(true, { ...base, backend: { reachable: false, reason: "disabled" } });
@@ -382,6 +507,7 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
         return undefined;
       }
       try {
+        const startedAtMs = Date.now();
         const result = await new CseClawClient(config).preTurn({
           schema_version: CSE_CLAW_BRIDGE_SCHEMA_VERSION,
           capabilities: [...CSE_CLAW_BRIDGE_CAPABILITIES],
@@ -427,14 +553,17 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
           }),
           context_refs: [],
         });
+        const preLatencyMs = Date.now() - startedAtMs;
+        recordPreCallLatency(preLatencyMs);
         const key = traceKey(ctx);
         if (key) {
-          runTraces.set(key, { traceId: result.trace_id });
+          runTraces.set(key, { traceId: result.trace_id, turnId: ctx.runId });
         }
         recordBridgeSuccess("pre", result.trace_id);
         const shouldInjectAdvisory =
           config.injectAdvisoryContext &&
           (!isSharedChatType(chatType) || config.sharedContextMode === "advisory");
+        recordAdvisoryDecision(shouldInjectAdvisory);
         if (!shouldInjectAdvisory) {
           return undefined;
         }
@@ -464,6 +593,7 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
       api,
       config,
       traceId: trace.traceId,
+      turnId: event.runId,
       assistantText: event.assistantTexts.join("\n\n"),
       outcome: "llm_output",
       metadata: sanitizeMetadata({
@@ -493,6 +623,7 @@ export function registerCseClawPlugin(api: OpenClawPluginApi): void {
       api,
       config,
       traceId: trace.traceId,
+      turnId: event.runId,
       assistantText: event.error ?? "",
       outcome: event.success ? "agent_end_success" : "agent_end_error",
       metadata: sanitizeMetadata({
