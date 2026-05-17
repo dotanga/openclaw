@@ -28,14 +28,21 @@ vi.mock("./src/client.js", () => ({
 import { registerCseClawPlugin } from "./index.js";
 
 type Handler = (event: Record<string, unknown>, ctx: Record<string, unknown>) => Promise<unknown>;
+type Command = {
+  handler: (ctx: { args?: string; [key: string]: unknown }) => Promise<{ text: string }>;
+};
 
 function createApi(pluginConfig: Record<string, unknown>) {
+  const commands: Command[] = [];
   const handlers = new Map<string, Handler>();
   const gatewayMethods = new Map<string, Handler>();
   const api = {
     logger: { warn: vi.fn() },
     on: vi.fn((eventName: string, handler: Handler) => {
       handlers.set(eventName, handler);
+    }),
+    registerCommand: vi.fn((command: Command) => {
+      commands.push(command);
     }),
     pluginConfig,
     registerGatewayMethod: vi.fn((method: string, handler: Handler) => {
@@ -44,7 +51,7 @@ function createApi(pluginConfig: Record<string, unknown>) {
     runtime: {},
   };
   registerCseClawPlugin(api as never);
-  return { api, gatewayMethods, handlers };
+  return { api, commands, gatewayMethods, handlers };
 }
 
 function createResponder() {
@@ -60,6 +67,64 @@ afterEach(() => {
 });
 
 describe("CSE_Claw plugin hooks", () => {
+  it("registers an operator-visible status command", async () => {
+    operatorStatusMock.mockResolvedValueOnce({
+      mode: "operator_claw_status",
+      entity_session_id: "cse-entity-main",
+      latest_cog: { cog_snapshot_id: "cog-1" },
+      pending_proposals: 2,
+      safety: {
+        cse_suggestions_are_tool_permissions: false,
+        automatic_openclaw_memory_writes: false,
+        system_prompt_override_enabled: false,
+      },
+    });
+    const { api, commands } = createApi({ enabled: true, endpoint: "http://127.0.0.1:8000" });
+
+    expect(api.registerCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "cse",
+        acceptsArgs: true,
+        requiredScopes: ["operator.read"],
+      }),
+    );
+
+    const result = await commands[0]?.handler({ args: "status", channel: "telegram" });
+
+    expect(operatorStatusMock).toHaveBeenCalledTimes(1);
+    expect(result?.text).toContain("CSE_Claw plugin:");
+    expect(result?.text).toContain("Schema: cse-claw.bridge.v1");
+    expect(result?.text).toContain("CSE_Claw backend: reachable");
+    expect(result?.text).toContain("CSE suggestions are tool permissions: no");
+  });
+
+  it("keeps status local when disabled", async () => {
+    const { commands } = createApi({ enabled: false, endpoint: "http://127.0.0.1:8000" });
+
+    const result = await commands[0]?.handler({ args: "status", channel: "telegram" });
+
+    expect(operatorStatusMock).not.toHaveBeenCalled();
+    expect(result?.text).toContain("Enabled: no");
+    expect(result?.text).toContain("Backend not queried because the bridge is disabled.");
+  });
+
+  it("formats bounded trace summaries", async () => {
+    operatorTraceMock.mockResolvedValueOnce({
+      mode: "operator_claw_trace",
+      trace_id: "trace-1",
+      counts: { events: 1, experiences: 1, model_artifacts: 2 },
+      timeline: [{ kind: "event" }, { kind: "artifact" }],
+      summary: { kind: "TraceAuditSummary" },
+    });
+    const { commands } = createApi({ enabled: true, endpoint: "http://127.0.0.1:8000" });
+
+    const result = await commands[0]?.handler({ args: "trace trace-1", channel: "telegram" });
+
+    expect(operatorTraceMock).toHaveBeenCalledWith("trace-1");
+    expect(result?.text).toContain("CSE_Claw trace: trace-1");
+    expect(result?.text).toContain("Counts: events=1, experiences=1, artifacts=2, timeline=2");
+  });
+
   it("records a pre-turn trace and injects bounded advisory context", async () => {
     preTurnMock.mockResolvedValueOnce({
       trace_id: "trace-1",
